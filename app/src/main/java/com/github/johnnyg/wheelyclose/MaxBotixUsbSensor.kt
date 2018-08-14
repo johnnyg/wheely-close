@@ -12,7 +12,7 @@ private const val TAG = "MaxBotixSensor"
 
 class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection) : DistanceSensor, UsbSerialInterface.UsbReadCallback {
 
-    private val sb = StringBuffer(MAX_READING_LEN)
+    private val sb = StringBuilder(MAX_READING_LEN)
     private var _distance = 0;
 
     init {
@@ -26,7 +26,7 @@ class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection) : Di
         }?.read(this)
     }
 
-    override fun onReceivedData(bytes: ByteArray) {
+    @Synchronized override fun onReceivedData(bytes: ByteArray) {
         var flush = false
         var string = String(bytes)
 
@@ -48,17 +48,13 @@ class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection) : Di
 
         if (flush) {
             val reading = sb.toString()
-            synchronized(this) {
-                _distance = Integer.parseInt(reading)
-            }
+            _distance = Integer.parseInt(reading)
             Log.d(TAG, "Produced $_distance")
         }
     }
 
     override val distance: Int
-        get() {
-            synchronized(this) {
-                return _distance
-            }
+        @Synchronized get() {
+            return _distance
         }
 }
