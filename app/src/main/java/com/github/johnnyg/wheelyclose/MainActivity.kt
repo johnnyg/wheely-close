@@ -21,7 +21,7 @@ class MainActivity : AppCompatActivity() {
 
         if (device != null) {
             val connection = getConnection(device)
-            val sensor: DistanceSensor = MatbotixUsbSensor(device, connection)
+            val sensor: DistanceSensor = MaxBotixUsbSensor(device, connection)
             reading.text = "working"
             while (true) {
                 Log.i(TAG, "${sensor.distanceInMm} mm")

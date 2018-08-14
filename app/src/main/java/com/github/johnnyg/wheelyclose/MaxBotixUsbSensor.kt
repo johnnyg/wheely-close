@@ -7,9 +7,9 @@ import com.felhr.usbserial.UsbSerialDevice
 import com.felhr.usbserial.UsbSerialInterface
 
 private const val BAUD_RATE = 57600
-private const val TAG = "MatbotixSensor"
+private const val TAG = "MaxBotixSensor"
 
-class MatbotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection) : DistanceSensor {
+class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection) : DistanceSensor {
 
     private val sb = StringBuilder()
     private var distance = 0;
