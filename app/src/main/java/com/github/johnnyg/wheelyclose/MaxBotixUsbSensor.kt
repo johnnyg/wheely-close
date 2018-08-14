@@ -27,29 +27,28 @@ class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection) : Di
     }
 
     @Synchronized override fun onReceivedData(bytes: ByteArray) {
-        var flush = false
-        var string = String(bytes)
+        val string = String(bytes)
+        var complete = false
+        var range = 0 until string.length
 
-        Log.v(TAG, "Read from sensor " + string)
+        Log.v(TAG, "Read from sensor '" + string + "'")
 
-        if (string.startsWith("R")) {
+        if (string.startsWith('R')) {
             sb.setLength(0)
-            string = string.substring(1)
+            range = 1..range.endInclusive
             Log.d(TAG, "Detected start of reading")
         }
 
-        if (string.endsWith("\r")) {
-            flush = true
-            string = string.trimEnd()
+        if (string.endsWith('\r')) {
+            complete = true
+            range = range.start until range.endInclusive
             Log.d(TAG, "Detected end of reading")
         }
 
-        sb.append(string)
+        sb.append(string.substring(range))
 
-        if (flush) {
-            val reading = sb.toString()
-            _distance = Integer.parseInt(reading)
-            Log.d(TAG, "Produced $_distance")
+        if (complete) {
+            _distance = sb.toString().toInt()
         }
     }
 
