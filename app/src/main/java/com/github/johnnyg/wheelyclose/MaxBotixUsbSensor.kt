@@ -10,7 +10,7 @@ private const val BAUD_RATE = 57600
 private const val MAX_READING_LEN = 4
 private const val TAG = "MaxBotixSensor"
 
-class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection) : DistanceSensor {
+class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection) : DistanceSensor, UsbSerialInterface.UsbReadCallback {
 
     private val sb = StringBuffer(MAX_READING_LEN)
     private var distance = 0;
@@ -23,39 +23,42 @@ class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection) : Di
             setStopBits(UsbSerialInterface.STOP_BITS_1)
             setParity(UsbSerialInterface.PARITY_NONE)
             setFlowControl(UsbSerialInterface.FLOW_CONTROL_OFF)
-        }?.read{ bytes ->
-            var flush = false
-            var string = String(bytes)
+        }?.read(this)
+    }
 
-            Log.v(TAG, "Read from sensor " + string)
+    override fun onReceivedData(bytes: ByteArray) {
+        var flush = false
+        var string = String(bytes)
 
-            if (string.startsWith("R")) {
-                sb.setLength(0)
-                string = string.substring(1)
-                Log.d(TAG, "Detected start of reading")
+        Log.v(TAG, "Read from sensor " + string)
+
+        if (string.startsWith("R")) {
+            sb.setLength(0)
+            string = string.substring(1)
+            Log.d(TAG, "Detected start of reading")
+        }
+
+        if (string.endsWith("\r")) {
+            flush = true
+            string = string.trimEnd()
+            Log.d(TAG, "Detected end of reading")
+        }
+
+        sb.append(string)
+
+        if (flush) {
+            val reading = sb.toString()
+            synchronized(this) {
+                distance = Integer.parseInt(reading)
             }
-
-            if (string.endsWith("\r")) {
-                flush = true
-                string = string.trimEnd()
-                Log.d(TAG, "Detected end of reading")
-            }
-
-            sb.append(string)
-
-            if (flush) {
-                val reading = sb.toString()
-                synchronized(this) {
-                    distance = Integer.parseInt(reading)
-                }
-                Log.d(TAG,"Produced $distance")
-            }
+            Log.d(TAG, "Produced $distance")
         }
     }
 
-    override val distanceInMm: Int get() {
-        synchronized(this){
-            return distance
+    override val distanceInMm: Int
+        get() {
+            synchronized(this) {
+                return distance
+            }
         }
-    }
 }

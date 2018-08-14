@@ -32,7 +32,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun getUsbDevice(): UsbDevice? {
+    private fun getUsbDevice(): UsbDevice? {
         var device: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
         if (device == null) {
             // TODO
@@ -40,7 +40,7 @@ class MainActivity : AppCompatActivity() {
         return device
     }
 
-    fun getConnection(device: UsbDevice): UsbDeviceConnection {
+    private fun getConnection(device: UsbDevice): UsbDeviceConnection {
         val manager = getSystemService(Context.USB_SERVICE) as UsbManager
         return manager.openDevice(device)
     }
