@@ -49,7 +49,10 @@ class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection) : Di
         sb.append(string.substring(range))
 
         if (complete) {
-            _distance = sb.toString().toInt()
+            val reading = sb.toString()
+            if (reading.isNotEmpty()) {
+                _distance = reading.toInt()
+            }
         }
     }
 
