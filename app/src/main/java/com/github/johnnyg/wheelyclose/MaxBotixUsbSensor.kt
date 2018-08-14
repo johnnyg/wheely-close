@@ -7,11 +7,12 @@ import com.felhr.usbserial.UsbSerialDevice
 import com.felhr.usbserial.UsbSerialInterface
 
 private const val BAUD_RATE = 57600
+private const val MAX_READING_LEN = 4
 private const val TAG = "MaxBotixSensor"
 
 class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection) : DistanceSensor {
 
-    private val sb = StringBuilder()
+    private val sb = StringBuffer(MAX_READING_LEN)
     private var distance = 0;
 
     init {
@@ -43,13 +44,18 @@ class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection) : Di
             sb.append(string)
 
             if (flush) {
-                distance = Integer.parseInt(sb.toString())
+                val reading = sb.toString()
+                synchronized(this) {
+                    distance = Integer.parseInt(reading)
+                }
                 Log.d(TAG,"Produced $distance")
             }
         }
     }
 
     override val distanceInMm: Int get() {
-        return distance
+        synchronized(this){
+            return distance
+        }
     }
 }
