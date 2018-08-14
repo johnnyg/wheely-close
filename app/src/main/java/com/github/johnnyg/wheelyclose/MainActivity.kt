@@ -26,7 +26,7 @@ class MainActivity : AppCompatActivity() {
             reading.text = "Reading..."
             thread(start = true) {
                 while (true) {
-                    val distance = "${sensor.distanceInMm} mm"
+                    val distance = "${sensor.distance} mm"
                     Log.i(TAG, distance)
                     runOnUiThread {
                         reading.text = distance

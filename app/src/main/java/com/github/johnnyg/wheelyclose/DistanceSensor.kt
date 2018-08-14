@@ -1,5 +1,6 @@
 package com.github.johnnyg.wheelyclose
 
 interface DistanceSensor {
-    val distanceInMm: Int
+    // Distance from the nearest object (in mm)
+    val distance: Int
 }
