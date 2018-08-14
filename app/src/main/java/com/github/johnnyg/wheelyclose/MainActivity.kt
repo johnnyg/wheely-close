@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.widget.TextView
+import kotlin.concurrent.thread
 
 private const val TAG = "MainActivity"
 
@@ -22,10 +23,16 @@ class MainActivity : AppCompatActivity() {
         if (device != null) {
             val connection = getConnection(device)
             val sensor: DistanceSensor = MaxBotixUsbSensor(device, connection)
-            reading.text = "working"
-            while (true) {
-                Log.i(TAG, "${sensor.distanceInMm} mm")
-                Thread.sleep(1000)
+            reading.text = "Reading..."
+            thread(start = true) {
+                while (true) {
+                    val distance = "${sensor.distanceInMm} mm"
+                    Log.i(TAG, distance)
+                    runOnUiThread {
+                        reading.text = distance
+                    }
+                    Thread.sleep(500)
+                }
             }
         } else {
             reading.text = "No device attached"
