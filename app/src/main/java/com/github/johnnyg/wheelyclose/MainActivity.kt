@@ -14,14 +14,22 @@ private const val TAG = "MainActivity"
 
 class MainActivity : AppCompatActivity() {
 
+    private var manager: UsbManager? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        val reading = findViewById<TextView>(R.id.reading)
-        val device = getUsbDevice()
+        manager = getSystemService(Context.USB_SERVICE) as UsbManager
+    }
 
-        if (device != null) {
-            val connection = getConnection(device)
+    override fun onStart() {
+        super.onStart()
+        val reading = findViewById<TextView>(R.id.reading)
+        val device = this.device
+        val connection = device?.let { dev ->
+            getConnection(dev)
+        }
+        if (device != null && connection != null) {
             val sensor: DistanceSensor = MaxBotixUsbSensor(device, connection)
             reading.text = "Reading..."
             thread(start = true) {
@@ -39,16 +47,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun getUsbDevice(): UsbDevice? {
-        var device: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
-        if (device == null) {
-            // TODO
-        }
-        return device
-    }
+    private val device get() = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE) ?: manager?.deviceList?.values?.firstOrNull()
 
-    private fun getConnection(device: UsbDevice): UsbDeviceConnection {
-        val manager = getSystemService(Context.USB_SERVICE) as UsbManager
-        return manager.openDevice(device)
+    private fun getConnection(device: UsbDevice): UsbDeviceConnection? {
+        return manager?.openDevice(device)
     }
 }

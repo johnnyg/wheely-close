@@ -26,7 +26,8 @@ class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection) : Di
         }?.read(this)
     }
 
-    @Synchronized override fun onReceivedData(bytes: ByteArray) {
+    @Synchronized
+    override fun onReceivedData(bytes: ByteArray) {
         val string = String(bytes)
         var complete = false
         var range = 0 until string.length
