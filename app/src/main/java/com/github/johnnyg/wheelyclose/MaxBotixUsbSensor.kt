@@ -32,7 +32,7 @@ class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection) : Di
         var complete = false
         var range = 0 until string.length
 
-        Log.v(TAG, "Read from sensor '" + string + "'")
+        Log.v(TAG, "Read from sensor '$string'")
 
         if (string.startsWith('R')) {
             sb.setLength(0)
