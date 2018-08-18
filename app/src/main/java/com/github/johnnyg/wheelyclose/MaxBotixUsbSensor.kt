@@ -14,6 +14,7 @@ const val SUCCESSFUL_READING = 1;
 
 class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection, private val handler: Handler) : UsbSerialInterface.UsbReadCallback {
 
+    private var lastReadDistance: Int? = null
     private val sb = StringBuilder(MAX_READING_LEN)
     private val serial = UsbSerialDevice.createUsbSerialDevice(device, connection)?.apply {
         open()
@@ -57,8 +58,11 @@ class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection, priv
             val reading = sb.toString()
             if (reading.isNotEmpty()) {
                 val distance = reading.toInt()
-                handler.obtainMessage(SUCCESSFUL_READING, distance, 0)?.apply {
-                    sendToTarget()
+                if (lastReadDistance == null || distance != lastReadDistance) {
+                    handler.obtainMessage(SUCCESSFUL_READING, distance, 0)?.apply {
+                        sendToTarget()
+                    }
+                    lastReadDistance = distance
                 }
             }
         }
