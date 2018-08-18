@@ -9,28 +9,37 @@ import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.Message
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.widget.TextView
-import kotlin.concurrent.thread
 
 private const val ACTION_USB_PERMISSION = "com.android.example.USB_PERMISSION"
 private const val TAG = "MainActivity"
+
+private fun getDevice(intent: Intent) : UsbDevice?  = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var manager: UsbManager
     private lateinit var permissionIntent: PendingIntent
-    private lateinit var reading: TextView
+    private lateinit var display: TextView
+    private lateinit var handler: Handler
+    private var sensor: MaxBotixUsbSensor? = null
+
     private val usbReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (ACTION_USB_PERMISSION == intent.action) {
-                val device: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+                Log.v(TAG, "Received USB permission intent")
                 if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
-                    updateReading()
+                    getDevice(intent)?.also { device ->
+                        createSensor(device)
+                    }
                 } else {
                     synchronized(this) {
-                        reading.text = "Permission denied for device"
+                        display.text = "Permission denied for device"
                     }
                 }
             }
@@ -42,56 +51,60 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         manager = getSystemService(Context.USB_SERVICE) as UsbManager
         permissionIntent = PendingIntent.getBroadcast(this, 0, Intent(ACTION_USB_PERMISSION), 0)
-        reading = findViewById<TextView>(R.id.reading)
+        display = findViewById(R.id.reading)
+        handler = object : Handler(Looper.getMainLooper()) {
+            override fun handleMessage(msg: Message?) {
+                when (msg?.what) {
+                    SUCCESSFUL_READING -> {
+                        val reading = "${msg.arg1} mm"
+                        Log.d(TAG, "Got distance reading: $reading")
+                        display.text = "${msg.arg1} mm"
+                    }
+                    else -> super.handleMessage(msg)
+                }
+            }
+        }
         val filter = IntentFilter(ACTION_USB_PERMISSION)
         registerReceiver(usbReceiver, filter)
     }
 
     override fun onDestroy() {
-        super.onDestroy()
         unregisterReceiver(usbReceiver)
+        sensor?.stop()
+        super.onDestroy()
     }
 
     override fun onStart() {
         super.onStart()
-        updateReading()
-    }
-
-    @Synchronized
-    private fun updateReading(msg: String = "No device attached") {
-        val device = this.device
-        val connection = device?.let { dev ->
-            getConnection(dev)
+        getDevice(intent)?.also { device ->
+            createSensor(device)
         }
-        if (device != null && connection != null) {
-            val sensor: DistanceSensor = MaxBotixUsbSensor(device, connection)
-            reading.text = "Reading..."
-            thread(start = true) {
-                while (true) {
-                    val distance = "${sensor.distance} mm"
-                    Log.i(TAG, distance)
-                    runOnUiThread {
-                        reading.text = distance
-                    }
-                    Thread.sleep(500)
+        if (sensor == null) {
+            Log.d(TAG, "No sensor, searching device list...")
+            manager.deviceList.values.firstOrNull()?.also { device ->
+                if (manager.hasPermission(device)) {
+                    createSensor(device)
+                } else {
+                    Log.d(TAG, "Requesting permission for ${device.deviceName}")
+                    manager.requestPermission(device, permissionIntent)
                 }
             }
-        } else {
-            reading.text = "No device attached"
         }
-
     }
 
-    private val device
-        get() = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
-                ?: manager.deviceList.values.firstOrNull()
+    private fun createSensor(device: UsbDevice) {
+        getConnection(device)?.also { connection ->
+            Log.d(TAG, "Creating sensor for ${device.deviceName}")
+            sensor = MaxBotixUsbSensor(device, connection, handler)?.apply {
+                start()
+            }
+        }
+    }
 
     private fun getConnection(device: UsbDevice): UsbDeviceConnection? {
         var connection: UsbDeviceConnection? = null
         if (manager.hasPermission(device)) {
             connection = manager.openDevice(device)
-        } else {
-            manager.requestPermission(device, permissionIntent)
         }
         return connection
     }

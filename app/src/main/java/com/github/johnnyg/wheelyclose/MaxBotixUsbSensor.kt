@@ -2,6 +2,7 @@ package com.github.johnnyg.wheelyclose
 
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbDeviceConnection
+import android.os.Handler
 import android.util.Log
 import com.felhr.usbserial.UsbSerialDevice
 import com.felhr.usbserial.UsbSerialInterface
@@ -9,24 +10,28 @@ import com.felhr.usbserial.UsbSerialInterface
 private const val BAUD_RATE = 57600
 private const val MAX_READING_LEN = 4
 private const val TAG = "MaxBotixSensor"
+const val SUCCESSFUL_READING = 1;
 
-class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection) : DistanceSensor, UsbSerialInterface.UsbReadCallback {
+class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection, private val handler: Handler) : UsbSerialInterface.UsbReadCallback {
 
     private val sb = StringBuilder(MAX_READING_LEN)
-    private var _distance = 0;
-
-    init {
-        UsbSerialDevice.createUsbSerialDevice(device, connection)?.apply {
-            open()
-            setBaudRate(BAUD_RATE)
-            setDataBits(UsbSerialInterface.DATA_BITS_8)
-            setStopBits(UsbSerialInterface.STOP_BITS_1)
-            setParity(UsbSerialInterface.PARITY_NONE)
-            setFlowControl(UsbSerialInterface.FLOW_CONTROL_OFF)
-        }?.read(this)
+    private val serial = UsbSerialDevice.createUsbSerialDevice(device, connection)?.apply {
+        open()
+        setBaudRate(BAUD_RATE)
+        setDataBits(UsbSerialInterface.DATA_BITS_8)
+        setStopBits(UsbSerialInterface.STOP_BITS_1)
+        setParity(UsbSerialInterface.PARITY_NONE)
+        setFlowControl(UsbSerialInterface.FLOW_CONTROL_OFF)
     }
 
-    @Synchronized
+    fun start() {
+        serial?.read(this)
+    }
+
+    fun stop() {
+        serial?.close()
+    }
+
     override fun onReceivedData(bytes: ByteArray) {
         val string = String(bytes)
         var complete = false
@@ -37,13 +42,13 @@ class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection) : Di
         if (string.startsWith('R')) {
             sb.setLength(0)
             range = 1..range.endInclusive
-            Log.d(TAG, "Detected start of reading")
+            Log.v(TAG, "Detected start of reading")
         }
 
         if (string.endsWith('\r')) {
             complete = true
             range = range.start until range.endInclusive
-            Log.d(TAG, "Detected end of reading")
+            Log.v(TAG, "Detected end of reading")
         }
 
         sb.append(string.substring(range))
@@ -51,13 +56,11 @@ class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection) : Di
         if (complete) {
             val reading = sb.toString()
             if (reading.isNotEmpty()) {
-                _distance = reading.toInt()
+                val distance = reading.toInt()
+                handler.obtainMessage(SUCCESSFUL_READING, distance, 0)?.apply {
+                    sendToTarget()
+                }
             }
         }
     }
-
-    override val distance: Int
-        @Synchronized get() {
-            return _distance
-        }
 }
