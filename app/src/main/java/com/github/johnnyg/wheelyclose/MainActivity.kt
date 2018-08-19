@@ -56,9 +56,10 @@ class MainActivity : AppCompatActivity() {
             override fun handleMessage(msg: Message?) {
                 when (msg?.what) {
                     SUCCESSFUL_READING -> {
-                        val reading = "${msg.arg1} mm"
+                        val distance = msg.arg1
+                        val reading = "$distance cm"
                         Log.d(TAG, "Got distance reading: $reading")
-                        display.text = "${msg.arg1} mm"
+                        display.text = reading
                     }
                     else -> super.handleMessage(msg)
                 }

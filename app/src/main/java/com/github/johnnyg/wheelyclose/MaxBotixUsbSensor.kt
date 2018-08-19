@@ -10,7 +10,7 @@ import com.felhr.usbserial.UsbSerialInterface
 private const val BAUD_RATE = 57600
 private const val MAX_READING_LEN = 4
 private const val TAG = "MaxBotixSensor"
-const val SUCCESSFUL_READING = 1;
+const val SUCCESSFUL_READING = 1
 
 class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection, private val handler: Handler) : UsbSerialInterface.UsbReadCallback {
 
@@ -56,8 +56,9 @@ class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection, priv
 
         if (complete) {
             val reading = sb.toString()
+            Log.v(TAG, "Complete reading: $reading")
             if (reading.isNotEmpty()) {
-                val distance = reading.toInt()
+                val distance = reading.toInt() / 10
                 if (lastReadDistance == null || distance != lastReadDistance) {
                     handler.obtainMessage(SUCCESSFUL_READING, distance, 0)?.apply {
                         sendToTarget()
