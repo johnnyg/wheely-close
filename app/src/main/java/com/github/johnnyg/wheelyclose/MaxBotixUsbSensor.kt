@@ -16,10 +16,9 @@ enum class DistanceUnit (val multiplier: Int) {
     Centimeter(10),
 }
 
-class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection, private val handler: Handler) : UsbSerialInterface.UsbReadCallback {
+class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection, private val handler: Handler) {
 
     private var lastReadDistance: Int? = null
-    private val sb = StringBuilder(MAX_READING_LEN)
     private var unit: DistanceUnit = DistanceUnit.Millimeter
     private val serial = UsbSerialDevice.createUsbSerialDevice(device, connection)?.apply {
         open()
@@ -30,51 +29,60 @@ class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection, priv
         setFlowControl(UsbSerialInterface.FLOW_CONTROL_OFF)
     }
 
+    private val callback = object : UsbSerialInterface.UsbReadCallback {
+
+        private val sb = StringBuilder(MAX_READING_LEN)
+
+        override fun onReceivedData(bytes: ByteArray) {
+            val string = String(bytes)
+            var complete = false
+            var range = 0 until string.length
+
+            Log.v(TAG, "Read from sensor '$string'")
+
+            if (string.startsWith('R')) {
+                sb.setLength(0)
+                range = 1..range.endInclusive
+                Log.v(TAG, "Detected start of reading")
+            }
+
+            if (string.endsWith('\r')) {
+                complete = true
+                range = range.start until range.endInclusive
+                Log.v(TAG, "Detected end of reading")
+            }
+
+            sb.append(string.substring(range))
+
+            if (complete) {
+                val reading = sb.toString()
+                Log.v(TAG, "Complete reading: $reading")
+                if (reading.isNotEmpty()) {
+                    onNewReading(reading.toInt())
+                }
+            }
+        }
+    }
+
     fun setUnit(unit: DistanceUnit) {
         this.unit = unit
     }
 
     fun start() {
-        serial?.read(this)
+        serial?.read(callback)
     }
 
     fun stop() {
         serial?.close()
     }
 
-    override fun onReceivedData(bytes: ByteArray) {
-        val string = String(bytes)
-        var complete = false
-        var range = 0 until string.length
-
-        Log.v(TAG, "Read from sensor '$string'")
-
-        if (string.startsWith('R')) {
-            sb.setLength(0)
-            range = 1..range.endInclusive
-            Log.v(TAG, "Detected start of reading")
-        }
-
-        if (string.endsWith('\r')) {
-            complete = true
-            range = range.start until range.endInclusive
-            Log.v(TAG, "Detected end of reading")
-        }
-
-        sb.append(string.substring(range))
-
-        if (complete) {
-            val reading = sb.toString()
-            Log.v(TAG, "Complete reading: $reading")
-            if (reading.isNotEmpty()) {
-                val distance = reading.toInt() / unit.multiplier
-                if (lastReadDistance == null || distance != lastReadDistance) {
-                    handler.obtainMessage(SUCCESSFUL_READING, distance, 0)?.apply {
-                        sendToTarget()
-                    }
-                    lastReadDistance = distance
-                }
+    private fun onNewReading(reading: Int) {
+        val distance = reading / unit.multiplier
+        if (lastReadDistance == null || distance != lastReadDistance) {
+            handler.obtainMessage(SUCCESSFUL_READING, distance, 0)?.apply {
+                sendToTarget()
             }
+            lastReadDistance = distance
         }
     }
 }
