@@ -11,11 +11,16 @@ private const val BAUD_RATE = 57600
 private const val MAX_READING_LEN = 4
 private const val TAG = "MaxBotixSensor"
 const val SUCCESSFUL_READING = 1
+enum class DistanceUnit (val multiplier: Int) {
+    Millimeter(1),
+    Centimeter(10),
+}
 
 class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection, private val handler: Handler) : UsbSerialInterface.UsbReadCallback {
 
     private var lastReadDistance: Int? = null
     private val sb = StringBuilder(MAX_READING_LEN)
+    private var unit: DistanceUnit = DistanceUnit.Millimeter
     private val serial = UsbSerialDevice.createUsbSerialDevice(device, connection)?.apply {
         open()
         setBaudRate(BAUD_RATE)
@@ -23,6 +28,10 @@ class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection, priv
         setStopBits(UsbSerialInterface.STOP_BITS_1)
         setParity(UsbSerialInterface.PARITY_NONE)
         setFlowControl(UsbSerialInterface.FLOW_CONTROL_OFF)
+    }
+
+    fun setUnit(unit: DistanceUnit) {
+        this.unit = unit
     }
 
     fun start() {
@@ -58,7 +67,7 @@ class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection, priv
             val reading = sb.toString()
             Log.v(TAG, "Complete reading: $reading")
             if (reading.isNotEmpty()) {
-                val distance = reading.toInt() / 10
+                val distance = reading.toInt() / unit.multiplier
                 if (lastReadDistance == null || distance != lastReadDistance) {
                     handler.obtainMessage(SUCCESSFUL_READING, distance, 0)?.apply {
                         sendToTarget()

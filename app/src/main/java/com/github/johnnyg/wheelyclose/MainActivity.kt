@@ -105,7 +105,8 @@ class MainActivity : AppCompatActivity() {
     private fun createSensor(device: UsbDevice) {
         getConnection(device)?.also { connection ->
             Log.d(TAG, "Creating sensor for ${device.deviceName}")
-            sensor = MaxBotixUsbSensor(device, connection, handler)?.apply {
+            sensor = MaxBotixUsbSensor(device, connection, handler).apply {
+                setUnit(DistanceUnit.Centimeter)
                 start()
             }
         }
