@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Color
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
@@ -18,6 +19,8 @@ import android.widget.TextView
 
 private const val ACTION_USB_PERMISSION = "com.android.example.USB_PERMISSION"
 private const val TAG = "MainActivity"
+private const val MIN_SAFE_DISTANCE = 90
+private const val UNSAFE_DISTANCE_TEXT_COLOUR = Color.RED
 
 private fun getDevice(intent: Intent) : UsbDevice?  = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
 
@@ -27,6 +30,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var permissionIntent: PendingIntent
     private lateinit var display: TextView
     private lateinit var handler: Handler
+    private var safeDistanceTextColour: Int = Color.BLACK
     private var sensor: MaxBotixUsbSensor? = null
 
     private val usbReceiver = object : BroadcastReceiver() {
@@ -49,9 +53,10 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        display = findViewById(R.id.reading)
+        safeDistanceTextColour = display.currentTextColor
         manager = getSystemService(Context.USB_SERVICE) as UsbManager
         permissionIntent = PendingIntent.getBroadcast(this, 0, Intent(ACTION_USB_PERMISSION), 0)
-        display = findViewById(R.id.reading)
         handler = object : Handler(Looper.getMainLooper()) {
             override fun handleMessage(msg: Message?) {
                 when (msg?.what) {
@@ -60,6 +65,10 @@ class MainActivity : AppCompatActivity() {
                         val reading = "$distance cm"
                         Log.d(TAG, "Got distance reading: $reading")
                         display.text = reading
+                        val textColour = if (distance < MIN_SAFE_DISTANCE) UNSAFE_DISTANCE_TEXT_COLOUR else safeDistanceTextColour
+                        if (display.currentTextColor != textColour) {
+                            display.setTextColor(textColour)
+                        }
                     }
                     else -> super.handleMessage(msg)
                 }
