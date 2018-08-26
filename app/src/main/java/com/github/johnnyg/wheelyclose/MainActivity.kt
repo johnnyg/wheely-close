@@ -63,11 +63,13 @@ class MainActivity : AppCompatActivity() {
                     SUCCESSFUL_READING -> {
                         val distance = msg.arg1
                         val reading = "$distance cm"
-                        Log.d(TAG, "Got distance reading: $reading")
-                        display.text = reading
                         val textColour = if (distance < MIN_SAFE_DISTANCE) UNSAFE_DISTANCE_TEXT_COLOUR else safeDistanceTextColour
-                        if (display.currentTextColor != textColour) {
-                            display.setTextColor(textColour)
+                        Log.d(TAG, "Got distance reading: $reading")
+                        synchronized(this) {
+                            display.text = reading
+                            if (display.currentTextColor != textColour) {
+                                display.setTextColor(textColour)
+                            }
                         }
                     }
                     else -> super.handleMessage(msg)
