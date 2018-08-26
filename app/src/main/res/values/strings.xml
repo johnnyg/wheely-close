@@ -1,4 +1,7 @@
 <resources>
     <string name="app_name">Wheely Close</string>
     <string name="default_reading">No sensor attached</string>
+    <string name="channel_name">Wheely Close Notification Channel</string>
+    <string name="channel_description">Channel used to receive notifications about close passes</string>
+    <string name="notification_title">Close pass detected!</string>
 </resources>
