@@ -29,6 +29,7 @@ private const val TAG = "MainActivity"
 private const val MIN_SAFE_DISTANCE = 90
 private const val UNSAFE_DISTANCE_TEXT_COLOUR = Color.RED
 private const val CHANNEL_ID = "com.github.johnnyg.wheelyclose.CHANNEL_ID"
+private const val TEST_MODE = false
 
 private fun getDevice(intent: Intent): UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
 
@@ -40,7 +41,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var handler: Handler
     private lateinit var notificationBuilder: NotificationCompat.Builder
     private var safeDistanceTextColour: Int = Color.BLACK
-    private var sensor: MaxBotixUsbSensor? = null
+    private var sensor: DistanceSensor? = null
     private var notificationId = 0
 
     private val usbReceiver = object : BroadcastReceiver() {
@@ -49,7 +50,11 @@ class MainActivity : AppCompatActivity() {
                 Log.v(TAG, "Received USB permission intent")
                 if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
                     getDevice(intent)?.also { device ->
-                        createSensor(device)
+                        sensor = createSensor(device)?.apply {
+                            setHandler(handler)
+                            setUnit(DistanceUnit.Centimeter)
+                            start()
+                        }
                     }
                 } else {
                     synchronized(this) {
@@ -94,30 +99,41 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        getDevice(intent)?.also { device ->
-            createSensor(device)
-        }
-        if (sensor == null) {
-            Log.d(TAG, "No sensor, searching device list...")
-            manager.deviceList.values.firstOrNull()?.also { device ->
-                if (manager.hasPermission(device)) {
-                    createSensor(device)
-                } else {
-                    Log.d(TAG, "Requesting permission for ${device.deviceName}")
-                    manager.requestPermission(device, permissionIntent)
+        if (!TEST_MODE) {
+            getDevice(intent)?.also { device ->
+                sensor = createSensor(device)
+            }
+            if (sensor == null) {
+                Log.d(TAG, "No sensor, searching device list...")
+                manager.deviceList.values.firstOrNull()?.also { device ->
+                    if (manager.hasPermission(device)) {
+                        sensor = createSensor(device)
+                    } else {
+                        Log.d(TAG, "Requesting permission for ${device.deviceName}")
+                        manager.requestPermission(device, permissionIntent)
+                    }
                 }
             }
+        } else {
+            val distance = 100
+            handler.obtainMessage(SUCCESSFUL_READING, distance, 0)?.apply {
+                sendToTarget()
+            }
+        }
+        sensor?.apply {
+            setHandler(handler)
+            setUnit(DistanceUnit.Centimeter)
+            start()
         }
     }
 
-    private fun createSensor(device: UsbDevice) {
+    private fun createSensor(device: UsbDevice): DistanceSensor? {
+        var sensor: DistanceSensor? = null;
         getConnection(device)?.also { connection ->
             Log.d(TAG, "Creating sensor for ${device.deviceName}")
-            sensor = MaxBotixUsbSensor(device, connection, handler).apply {
-                setUnit(DistanceUnit.Centimeter)
-                start()
-            }
+            sensor = MaxBotixUsbSensor(device, connection)
         }
+        return sensor
     }
 
     private fun getConnection(device: UsbDevice): UsbDeviceConnection? {

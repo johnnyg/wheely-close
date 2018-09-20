@@ -10,14 +10,10 @@ import com.felhr.usbserial.UsbSerialInterface
 private const val BAUD_RATE = 57600
 private const val MAX_READING_LEN = 4
 private const val TAG = "MaxBotixSensor"
-const val SUCCESSFUL_READING = 1
-enum class DistanceUnit (val multiplier: Int) {
-    Millimeter(1),
-    Centimeter(10),
-}
 
-class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection, private val handler: Handler) {
+class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection): DistanceSensor {
 
+    private var handler: Handler? = null
     private var lastReadDistance: Int? = null
     private var unit: DistanceUnit = DistanceUnit.Millimeter
     private val serial = UsbSerialDevice.createUsbSerialDevice(device, connection)?.apply {
@@ -64,22 +60,25 @@ class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection, priv
         }
     }
 
-    fun setUnit(unit: DistanceUnit) {
+    override fun setHandler(handler: Handler) {
+        this.handler = handler
+    }
+    override fun setUnit(unit: DistanceUnit) {
         this.unit = unit
     }
 
-    fun start() {
+    override fun start() {
         serial?.read(callback)
     }
 
-    fun stop() {
+    override fun stop() {
         serial?.close()
     }
 
     private fun onNewReading(reading: Int) {
         val distance = reading / unit.multiplier
         if (lastReadDistance == null || distance != lastReadDistance) {
-            handler.obtainMessage(SUCCESSFUL_READING, distance, 0)?.apply {
+            handler?.obtainMessage(SUCCESSFUL_READING, distance, 0)?.apply {
                 sendToTarget()
             }
             lastReadDistance = distance
