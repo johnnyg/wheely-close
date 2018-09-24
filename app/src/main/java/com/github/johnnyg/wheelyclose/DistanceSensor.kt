@@ -11,6 +11,6 @@ enum class DistanceUnit (val multiplier: Int) {
 interface DistanceSensor {
     fun start()
     fun stop()
-    fun setHandler(handler: Handler)
-    fun setUnit(unit: DistanceUnit)
+    var handler: Handler?
+    var unit: DistanceUnit
 }

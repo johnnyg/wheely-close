@@ -13,9 +13,9 @@ private const val TAG = "MaxBotixSensor"
 
 class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection): DistanceSensor {
 
-    private var handler: Handler? = null
+    override var handler: Handler? = null
+    override var unit: DistanceUnit = DistanceUnit.Millimeter
     private var lastReadDistance: Int? = null
-    private var unit: DistanceUnit = DistanceUnit.Millimeter
     private val serial = UsbSerialDevice.createUsbSerialDevice(device, connection)?.apply {
         open()
         setBaudRate(BAUD_RATE)
@@ -58,13 +58,6 @@ class MaxBotixUsbSensor(device: UsbDevice, connection: UsbDeviceConnection): Dis
                 }
             }
         }
-    }
-
-    override fun setHandler(handler: Handler) {
-        this.handler = handler
-    }
-    override fun setUnit(unit: DistanceUnit) {
-        this.unit = unit
     }
 
     override fun start() {

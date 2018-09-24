@@ -51,8 +51,8 @@ class MainActivity : AppCompatActivity() {
                 if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
                     getDevice(intent)?.also { device ->
                         sensor = createSensor(device)?.apply {
-                            setHandler(handler)
-                            setUnit(DistanceUnit.Centimeter)
+                            handler = handler
+                            unit = DistanceUnit.Centimeter
                             start()
                         }
                     }
@@ -121,8 +121,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
         sensor?.apply {
-            setHandler(handler)
-            setUnit(DistanceUnit.Centimeter)
+            handler = handler
+            unit = DistanceUnit.Centimeter
             start()
         }
     }
