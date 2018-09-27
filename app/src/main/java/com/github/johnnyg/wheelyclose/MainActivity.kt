@@ -26,6 +26,7 @@ private const val TAG = "MainActivity"
 private const val MIN_SAFE_DISTANCE = 90
 private const val UNSAFE_DISTANCE_TEXT_COLOUR = Color.RED
 private const val CHANNEL_ID = "com.github.johnnyg.wheelyclose.CHANNEL_ID"
+private const val NOTIFICATION_ID = MIN_SAFE_DISTANCE
 private const val TEST_MODE = false
 
 private fun getDevice(intent: Intent): UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
@@ -39,7 +40,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var notificationBuilder: NotificationCompat.Builder
     private var safeDistanceTextColour: Int = Color.BLACK
     private var sensor: DistanceSensor? = null
-    private var notificationId = 0
 
     private val usbReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -192,10 +192,9 @@ class MainActivity : AppCompatActivity() {
                 setWhen(Calendar.getInstance().timeInMillis)
             }.build().let { notification ->
                 NotificationManagerCompat.from(this).run {
-                    notify(notificationId, notification)
+                    notify(NOTIFICATION_ID, notification)
                 }
             }
-            notificationId++
         }
     }
 }
