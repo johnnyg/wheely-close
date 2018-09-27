@@ -1,5 +1,7 @@
 package com.github.johnnyg.wheelyclose
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -9,19 +11,14 @@ import android.graphics.Color
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.os.Message
+import android.os.*
 import android.support.v4.app.NotificationCompat
+import android.support.v4.app.NotificationManagerCompat
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.widget.TextView
-import android.app.NotificationManager
-import android.app.NotificationChannel
-import android.os.Build
-import android.support.v4.app.NotificationManagerCompat
 import java.util.*
+import kotlin.concurrent.thread
 
 
 private const val ACTION_USB_PERMISSION = "com.github.johnnyg.wheelyclose.USB_PERMISSION"
@@ -115,13 +112,35 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         } else {
-            val distance = 100
-            handler.obtainMessage(SUCCESSFUL_READING, distance, 0)?.apply {
-                sendToTarget()
+            Log.v(TAG, "Using test sensor")
+            sensor = object: DistanceSensor{
+
+                override var handler: Handler? = null
+                override var unit = DistanceUnit.Centimeter
+                var running = false
+
+                override fun start() {
+                    thread {
+                        running = true
+                        while (running) {
+                            val distance = Random().nextInt(1000)
+                            Log.v(TAG, "Generated random distance of $distance")
+                            handler?.obtainMessage(SUCCESSFUL_READING, distance, 0)?.apply {
+                                sendToTarget()
+                            }
+                            Thread.sleep(1000)
+                        }
+                    }
+                }
+
+                override fun stop() {
+                    running = false
+                }
             }
         }
+        val self = this
         sensor?.apply {
-            handler = handler
+            handler = self.handler
             unit = DistanceUnit.Centimeter
             start()
         }
