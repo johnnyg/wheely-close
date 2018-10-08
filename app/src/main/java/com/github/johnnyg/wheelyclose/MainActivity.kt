@@ -27,7 +27,6 @@ private const val MIN_SAFE_DISTANCE = 90
 private const val UNSAFE_DISTANCE_TEXT_COLOUR = Color.RED
 private const val CHANNEL_ID = "com.github.johnnyg.wheelyclose.CHANNEL_ID"
 private const val NOTIFICATION_ID = MIN_SAFE_DISTANCE
-private const val TEST_MODE = false
 
 private fun getDevice(intent: Intent): UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
 
@@ -48,8 +47,6 @@ class MainActivity : AppCompatActivity() {
                 if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
                     getDevice(intent)?.also { device ->
                         sensor = createSensor(device)?.apply {
-                            handler = handler
-                            unit = DistanceUnit.Centimeter
                             start()
                         }
                     }
@@ -86,6 +83,42 @@ class MainActivity : AppCompatActivity() {
             setAutoCancel(true)
             priority = NotificationCompat.PRIORITY_HIGH
         }
+        display.setOnLongClickListener {
+            var consumed = false
+            val self = this
+            if (sensor == null) {
+                Log.v(TAG, "Using test sensor")
+                sensor = object : DistanceSensor {
+                    override var handler: Handler? = null
+                    override var unit = DistanceUnit.Centimeter
+                    var running = false
+
+                    override fun start() {
+                        thread {
+                            running = true
+                            while (running) {
+                                val distance = Random().nextInt(1000)
+                                Log.v(TAG, "Generated random distance of $distance")
+                                handler?.obtainMessage(SUCCESSFUL_READING, distance, 0)?.apply {
+                                    sendToTarget()
+                                }
+                                Thread.sleep(1000)
+                            }
+                        }
+                    }
+
+                    override fun stop() {
+                        running = false
+                    }
+                }.apply {
+                    handler = self.handler
+                    unit = DistanceUnit.Centimeter
+                    start()
+                }
+                consumed = true
+            }
+            consumed
+        }
     }
 
     override fun onDestroy() {
@@ -96,61 +129,35 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        if (!TEST_MODE) {
-            getDevice(intent)?.also { device ->
-                sensor = createSensor(device)
-            }
-            if (sensor == null) {
-                Log.d(TAG, "No sensor, searching device list...")
-                manager.deviceList.values.firstOrNull()?.also { device ->
-                    if (manager.hasPermission(device)) {
-                        sensor = createSensor(device)
-                    } else {
-                        Log.d(TAG, "Requesting permission for ${device.deviceName}")
-                        manager.requestPermission(device, permissionIntent)
-                    }
-                }
-            }
-        } else {
-            Log.v(TAG, "Using test sensor")
-            sensor = object: DistanceSensor{
-
-                override var handler: Handler? = null
-                override var unit = DistanceUnit.Centimeter
-                var running = false
-
-                override fun start() {
-                    thread {
-                        running = true
-                        while (running) {
-                            val distance = Random().nextInt(1000)
-                            Log.v(TAG, "Generated random distance of $distance")
-                            handler?.obtainMessage(SUCCESSFUL_READING, distance, 0)?.apply {
-                                sendToTarget()
-                            }
-                            Thread.sleep(1000)
-                        }
-                    }
-                }
-
-                override fun stop() {
-                    running = false
-                }
+        getDevice(intent)?.also { device ->
+            sensor = createSensor(device)?.apply {
+                start()
             }
         }
-        val self = this
-        sensor?.apply {
-            handler = self.handler
-            unit = DistanceUnit.Centimeter
-            start()
+        if (sensor == null) {
+            Log.d(TAG, "No sensor, searching device list...")
+            manager.deviceList.values.firstOrNull()?.also { device ->
+                if (manager.hasPermission(device)) {
+                    sensor = createSensor(device)?.apply {
+                        start()
+                    }
+                } else {
+                    Log.d(TAG, "Requesting permission for ${device.deviceName}")
+                    manager.requestPermission(device, permissionIntent)
+                }
+            }
         }
     }
 
     private fun createSensor(device: UsbDevice): DistanceSensor? {
-        var sensor: DistanceSensor? = null;
+        val self = this
+        var sensor: DistanceSensor? = null
         getConnection(device)?.also { connection ->
             Log.d(TAG, "Creating sensor for ${device.deviceName}")
-            sensor = MaxBotixUsbSensor(device, connection)
+            sensor = MaxBotixUsbSensor(device, connection).apply {
+                handler = self.handler
+                unit = DistanceUnit.Centimeter
+            }
         }
         return sensor
     }
